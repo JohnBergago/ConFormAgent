@@ -1,0 +1,3 @@
+[submodule "opt/ConFormSim"]
+	path = opt/ConFormSim
+	url = https://github.com/JohnBergago/ConFormSim.git
