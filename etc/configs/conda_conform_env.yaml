@@ -1,56 +1,30 @@
-name: condis
+name: conform
 channels:
   - defaults
-  - conda-forge
-dependencies: 
-  - python=3.6.*
+dependencies:
+  - _libgcc_mutex
+  - ca-certificates
+  - certifi
+  - ld_impl_linux-64
+  - libedit
+  - libffi
+  - libgcc-ng
+  - libstdcxx-ng
+  - ncurses
+  - openssl
   - pip
-  - cudnn=7.6.5=cuda10.1_0
-#  - cudnn=7.6.4=cuda10.0_0
-  - x264=1!152.20180717=h14c3975_1001
-  - ffmpeg=4.0.2=ha0c5888_2
+  - python=3.7
+  - readline
+  - setuptools
+  - sqlite
+  - tk
+  - wheel
+  - xz
+  - zlib
   - pip:
-    - oslo-concurrency
-    - matplotlib
-    - gym
-    - gym-unity==0.16.*
-    - paramiko
-# as gym[atari] doesn't work, init manually
-    - atari_py==0.2.0
-    - Pillow
-    - opencv-python
-#-------------------------------------------------------
-    - gputil
-    - lz4
-    - mlagents-envs==0.16.*
-    - psutil
-#--- ray with ray[debug]
-    - ray==0.8.*
-    - psutil
-    - py-spy>=0.2.0
-    - tabulate
-    - requests
-    - dm-tree
-#-------------------------------------------------------
-# tune hyper parameter search optimizers
-    - bayesian-optimization
-    - hpbandster
-#    - ConfigSpace
-#-------------------------------------------------------
-    - tensorboardX
-    - tensorflow-gpu==2.1.0
-    - torch==1.3.1
-    - torchvision==0.4.2
-    - gitpython
-# for ray web UI:
-    - jupyter
-    - ipywidgets
-    - bokeh
-    - aiohttp
-    - setproctitle
-    - grpcio
-    - pandas
-    
-
-
+    - tensorflow==2.4.0
+    - torch==1.7.1
+    - mlagents==0.22.0
+    - mlagents-envs==0.22.0
+    - ray[all]==1.1
 

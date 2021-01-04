@@ -27,9 +27,9 @@ $PROJ_DIR/opt/ConFormSim/setup.sh
 
 # intitialize the conda environment
 echo "Remove old conform conda env."
-conda env remove -n conform-env --yes
-conda env create -f $PROJ_DIR/etc/configs/conda_conform_test.yaml
-conda activate conform-test
+conda env remove -n conform --yes
+conda env create -f $PROJ_DIR/etc/configs/conda_conform_env.yaml
+conda activate conform
 
 # pip install -e $PROJ_DIR/
 

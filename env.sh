@@ -30,7 +30,7 @@ echo "CONFORM_PROJ_DIR is "
 echo ${CONFORM_PROJ_DIR}
 
 # activate conform environment
-conda activate conform-test
+conda activate conform
 
 if [ "$update_conform" = true ]; then
     echo "Updating conda 'conform' environment"
