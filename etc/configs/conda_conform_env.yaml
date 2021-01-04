@@ -22,7 +22,7 @@ dependencies:
   - xz
   - zlib
   - pip:
-    - tensorflow==2.4.0
+    - tensorflow==2.2.0
     - torch==1.7.1
     - mlagents==0.22.0
     - mlagents-envs==0.22.0
