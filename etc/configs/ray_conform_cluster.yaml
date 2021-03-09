@@ -65,8 +65,7 @@ initialization_commands: []
 
 # List of shell commands to run to set up each nodes.
 setup_commands:
-   - . CONFORM_PROJ_DIR/setup.sh
-    # - . CONFORM_PROJ_DIR/env.sh
+   - . CONFORM_PROJ_DIR/env.sh
 
 # Custom commands that will be run on the head node after common setup.
 head_setup_commands: []

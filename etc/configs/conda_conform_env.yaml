@@ -22,9 +22,5 @@ dependencies:
   - xz
   - zlib
   - pip:
-    - tensorflow==2.2.0
-    - torch==1.7.1
-    - mlagents==0.22.0
-    - mlagents-envs==0.22.0
-    - ray[all]==1.1
+    - -e ../../src/
 
