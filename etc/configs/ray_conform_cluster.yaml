@@ -69,7 +69,7 @@ worker_nodes: {}
 # dictionary from REMOTE_PATH: LOCAL_PATH, e.g.
 file_mounts: {
    "CONFORM_PROJ_DIR/opt/ConFormSim/build": "CONFORM_PROJ_DIR/opt/ConFormSim/build",
-#    "/path2/on/remote/machine": "/path2/on/local/machine",
+    "/tmp/current_branch_sha": "CONFORM_PROJ_DIR/.git/refs/heads/main",
 }
 
 # Files or directories to copy from the head node to the worker nodes. The format is a
@@ -100,7 +100,10 @@ initialization_commands: []
 
 # List of shell commands to run to set up each nodes.
 setup_commands:
-   - . CONFORM_PROJ_DIR/env.sh
+    - test -e ConFormAgent || git clone https://github.com/JohnBergago/ConFormAgent.git
+    - cd ConFormAgent && git fetch && git checkout `cat /tmp/current_branch_sha`
+    - . CONFORM_PROJ_DIR/env.sh
+
 
 # Custom commands that will be run on the head node after common setup.
 head_setup_commands: []

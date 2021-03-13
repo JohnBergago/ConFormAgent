@@ -79,9 +79,7 @@ class RLLibStorageEnv(Unity3DEnv):
             obs_space_single = spaces.Tuple(list_spaces)
         else:
             obs_space_single = list_spaces[0]
-
-        if (self._num_agents > 1):
-            return spaces.Tuple([obs_space_single] * self._num_agents)
+            
         return obs_space_single
 
     @property
