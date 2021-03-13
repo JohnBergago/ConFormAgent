@@ -1,6 +1,17 @@
-# Default configurations for the Unity storage environment.
+"""Default configurations for the ConFormSim storage environment."""
 
-# Configuration of the Unity engine, running the simulation
+from typing import Dict
+from conform_agent.utils import rgb_to_hex
+
+"""Assign a float value to each camera type."""
+CAMERA_TYPES: Dict[str, float] = {
+    "TopDownCamera": 0.0,
+    "TopDownFollowCamera": 1.0,
+    "EgoCamera": 2.0,
+}
+
+"""Default engine configuration for the ConFormSim storage environment.
+"""
 DEFAULT_ENGINE_CONFIG = {
     # Factor which is applied to the simulation speed from 1 to 100. Faster will 
     # speed up training, but might break physics
@@ -20,19 +31,17 @@ DEFAULT_ENV_CONFIG = {
     #################################################################################
     # General Settings (Unity Env)
     #################################################################################
-    # # The UnityEnvironment path or file to be wrapped in the gym.
-    # "env_name": None,
-    # # Worker number for environment.
-    # "worker_id" : 0,
-    # # Whether to use visual observations or vector observation of the full env.
-    # "use_visual" : False,
-    # # Maximum number of steps until a single agent in the environment will be reset.
-    # "max_steps": 200,
+    # The UnityEnvironment path or file to be wrapped in the gym.
+    "env_name": None,
+    # Whether to use visual observations or vector observation of the full env.
+    "use_visual" : False,
+    # Maximum number of steps until a single agent in the environment will be reset.
+    "episode_horizon": 200,
     # Task difficulty to fulfill. Currently there are 3 levels:
     # 1 - As soon as an item is picked up the episode ends.
     # 2 - As soon as an item was brought to the correct target, the episode ends.
-    # 3 - Only if all items are on there correct target, the episode ends.
-    # If max_steps > 0 it will always have effect.
+    # 3 - Only if all items are on their correct target, the episode ends.
+    # If episode_horizon is reached, the episode ends.
     "task_level": 3,
     # Whether to use ray perception with 30 rays around the agent detecting all items
     # and base areas. Using this and visual observations might lead to strange
@@ -48,8 +57,8 @@ DEFAULT_ENV_CONFIG = {
     "flatten_branched": False,
     # Whether to run the Unity simulator in no-graphics mode.
     "no_graphics": False,
-    # If True, return a list of visual observations instead of only one.
-    "allow_multiple_visual_obs": False,
+    # # If True, return a list of visual observations instead of only one.
+    # "allow_multiple_visual_obs": False,
     # Seed to use for instantiating an environment. (Not Implemented)
     "seed": 0,
     # Don't provide visual output of the observations for the user. But the user can

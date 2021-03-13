@@ -12,7 +12,7 @@ def read(fname):
 
 setup(
     name="conform_agent",
-    version="0.0.1",
+    version="0.0.2",
     author="Florian Schulze",
     author_email="flori.schulze@yahoo.de",
     description="A package to support concept formation research using reinforcement "
@@ -26,9 +26,9 @@ setup(
     install_requires=[
         "tensorflow<2.3",
         "torch",
-        "ray[all]>=1.0,<=1.1",
-        "mlagents==0.22.0",
-        "mlagents-envs==0.22.0"
+        "ray[all]>=2.0.0",
+        "mlagents==0.24.1",
+        "mlagents-envs==0.24.01"
     ],
     python_requires='>=3.6',
 )
