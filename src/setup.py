@@ -26,7 +26,7 @@ setup(
     install_requires=[
         "tensorflow<2.3",
         "torch",
-        "ray[all]>=2.0.0",
+        "ray[all]>=2.0.*",
         "mlagents==0.24.1",
         "mlagents-envs==0.24.01"
     ],

@@ -27,7 +27,7 @@ while test $# -gt 0; do
 done
 
 python $CONFORM_PROJ_DIR/etc/kill_xvfb.py
-ray exec $yaml_file.running "conda activate conform-test &&
+ray exec $yaml_file.running "source ${CONFORM_PROJ_DIR}/env.sh &&
                      ray stop &&  
                      ray teardown ~/ray_bootstrap_config.yaml --yes"
 rm -r $yaml_file.running

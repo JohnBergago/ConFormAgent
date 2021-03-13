@@ -49,7 +49,8 @@ def on_episode_end(info):
             episode.custom_metrics["fraction_solved"].append(int(info['solved']))
 
 # ray initialization and stuff
-ray.init(num_cpus=3, num_gpus=1)
+# ray.init(address='auto', num_cpus=3, num_gpus=1)
+ray.init(address='auto')
 register_env("StorageEnv", RLLibStorageEnv)
 
 config={
