@@ -35,7 +35,7 @@ class RLLibStorageEnv(Unity3DEnv):
         self.api_version = [int(s) for s in self.api_version]
         
         # Reset entire env every this number of step calls.
-        self.episode_horizon = self.config.get("episode_horizon")
+        self.episode_horizon = self.config.get("max_steps") + 100
         # Keep track of how many times we have called `step` so far.
         self.episode_timesteps = 0
         

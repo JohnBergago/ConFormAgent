@@ -36,12 +36,12 @@ DEFAULT_ENV_CONFIG = {
     # Whether to use visual observations or vector observation of the full env.
     "use_visual" : False,
     # Maximum number of steps until a single agent in the environment will be reset.
-    "episode_horizon": 200,
+    "max_steps": 200,
     # Task difficulty to fulfill. Currently there are 3 levels:
     # 1 - As soon as an item is picked up the episode ends.
     # 2 - As soon as an item was brought to the correct target, the episode ends.
     # 3 - Only if all items are on their correct target, the episode ends.
-    # If episode_horizon is reached, the episode ends.
+    # If max_steps is reached, the episode ends.
     "task_level": 3,
     # Whether to use ray perception with 30 rays around the agent detecting all items
     # and base areas. Using this and visual observations might lead to strange

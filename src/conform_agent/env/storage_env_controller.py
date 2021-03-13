@@ -140,7 +140,7 @@ class StorageEnvController:
         self.env_param_channel.set_float_parameter("useVisual", 1 if self.config.get("use_visual") and not self.config.get("use_object_property_camera") else 0)
         self.env_param_channel.set_float_parameter("useRayPerception", 1 if self.config.get("use_ray_perception") else 0)
         self.env_param_channel.set_float_parameter("useObjectPropertyCamera", 1 if self.config.get("use_object_property_camera") else 0)
-        self.env_param_channel.set_float_parameter("maxSteps", self.config.get("episode_horizon"))
+        self.env_param_channel.set_float_parameter("maxSteps", self.config.get("max_steps"))
         self.env_param_channel.set_float_parameter("taskLevel", self.config.get("task_level"))
 
         # Read engine config 
