@@ -22,7 +22,7 @@ env_config = {
     "use_ray_perception" : False,
     # Whether to use a object property camera, that renders for each pixel of an
     # image the features of the object at that position on screen.
-    "use_object_property_camera": True,
+    "use_object_property_camera": False,
 
     "num_train_areas": 8,
     #  More technical configurations of the simulation engine. More details in 
@@ -30,7 +30,7 @@ env_config = {
     "engine_config": {
         # Factor which is applied to the simulation speed from 1 to 100. Faster will 
         # speed up training, but might break physics
-        "sim_speed": 20,
+        "sim_speed": 100,
         # Width of the window which the simulator creates.
         "window_width": 640,
         # Height of the window which the simulator creates.
@@ -60,7 +60,7 @@ def on_episode_end(info):
             episode.custom_metrics["fraction_solved"].append(int(info['solved']))
 
 # ray initialization and stuff
-# ray.init(address='auto', num_cpus=3, num_gpus=1)
+# ray.init(local_mode=True, num_cpus=3, num_gpus=1)
 ray.init(address='auto')
 register_env("StorageEnv", RLLibStorageEnv)
 

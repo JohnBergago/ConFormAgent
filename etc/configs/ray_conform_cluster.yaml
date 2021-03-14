@@ -47,14 +47,14 @@ auth:
 available_node_types:
     ray.head.default:
         resources: {"CPU": 3, "GPU": 1}
-        min_workers: 1
-        max_workers: 1
+        min_workers: 0
+        max_workers: 0
         # Leave this empty
         node_config: {}
     ray.worker.default:
         resources: {"CPU": 2}
         ## NOTE: Typically for local clusters, max_workers == len(worker_ips).
-        min_workers: 0
+        min_workers: 1
         # Leave this empty
         node_config: {}
 head_node_type: ray.head.default

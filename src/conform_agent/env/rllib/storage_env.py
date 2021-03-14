@@ -35,7 +35,7 @@ class RLLibStorageEnv(Unity3DEnv):
         self.api_version = [int(s) for s in self.api_version]
         
         # Reset entire env every this number of step calls.
-        self.episode_horizon = self.config.get("max_steps") + 100
+        self.episode_horizon = self.config.get("max_steps")
         # Keep track of how many times we have called `step` so far.
         self.episode_timesteps = 0
         
@@ -79,7 +79,7 @@ class RLLibStorageEnv(Unity3DEnv):
             obs_space_single = spaces.Tuple(list_spaces)
         else:
             obs_space_single = list_spaces[0]
-            
+
         return obs_space_single
 
     @property
@@ -93,4 +93,49 @@ class RLLibStorageEnv(Unity3DEnv):
 
     def close(self):
         self.unity_env.close()
+
+    def _get_step_results(self):
+            """Collects those agents' obs/rewards that have to act in next `step`.
+            Returns:
+                Tuple:
+                    obs: Multi-agent observation dict.
+                        Only those observations for which to get new actions are
+                        returned.
+                    rewards: Rewards dict matching `obs`.
+                    dones: Done dict with only an __all__ multi-agent entry in it.
+                        __all__=True, if episode is done for all agents.
+                    infos: An (empty) info dict.
+            """
+            obs = {}
+            rewards = {}
+            dones = {}
+            infos = {}
+            for behavior_name in self.unity_env.behavior_specs:
+                decision_steps, terminal_steps = self.unity_env.get_steps(
+                    behavior_name)
+                # Important: Only update those sub-envs that are currently
+                # available within _env_state.
+                # Loop through all envs ("agents") and fill in, whatever
+                # information we have.
+                for agent_id, idx in decision_steps.agent_id_to_index.items():
+                    key = behavior_name + "_{}".format(agent_id)
+                    os = tuple(o[idx] for o in decision_steps.obs)
+                    os = os[0] if len(os) == 1 else os
+                    obs[key] = os
+                    rewards[key] = decision_steps.reward[idx]  # rewards vector
+                for agent_id, idx in terminal_steps.agent_id_to_index.items():
+                    key = behavior_name + "_{}".format(agent_id)
+                    # Only overwrite rewards (last reward in episode), b/c obs
+                    # here is the last obs (which doesn't matter anyways).
+                    # Unless key does not exist in obs.
+                    os = tuple(o[idx] for o in terminal_steps.obs)
+                    obs[key] = os = os[0] if len(os) == 1 else os
+                    rewards[key] = terminal_steps.reward[idx]  # rewards vector
+                    dones[key] = True
+            self.episode_timesteps=0
+            done_all = len(dones) == self._num_agents
+            # Only use dones if all agents are done, then we should do a reset.
+            return obs, rewards, dict({
+                "__all__": done_all
+                }, **dones), infos
 
