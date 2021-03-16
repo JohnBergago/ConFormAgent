@@ -1,7 +1,8 @@
-from conform_agent.env.rllib.storage_env import RLLibStorageEnv
+from conform_agent.env.rllib.storage_env import RLLibConFormSimStorageEnv
 import ray
 from ray import tune
 from ray.tune.registry import register_env
+from ray.rllib.agents.impala import ImpalaTrainer
 
 
 env_config = {
@@ -9,7 +10,7 @@ env_config = {
     # Whether to use visual observations or vector observation of the full env.
     "use_visual" : False,
     # Maximum number of steps until a single agent in the environment will be reset.
-    "max_steps": 200,
+    "max_steps": 150,
     # Task difficulty to fulfill. Currently there are 3 levels:
     # 1 - As soon as an item is picked up the episode ends.
     # 2 - As soon as an item was brought to the correct target, the episode ends.
@@ -36,21 +37,7 @@ env_config = {
         # Height of the window which the simulator creates.
         "window_height": 360,
     },
-    }
-env = RLLibStorageEnv(env_config)
-print("Action Space: " + str(env.action_space))
-print("Observation Space: " + str(env.observation_space))
-print("Behavior Name: " + str(env.behavior_name))
-
-observation_space = env.observation_space
-action_space = env.action_space
-game_name = env.behavior_name
-env.close()
-
-policies = {
-    "test": (None, observation_space, action_space, {}),
 }
-
 
 def on_episode_end(info):
     episode = info["episode"]
@@ -62,7 +49,7 @@ def on_episode_end(info):
 # ray initialization and stuff
 # ray.init(local_mode=True, num_cpus=3, num_gpus=1)
 ray.init(address='auto')
-register_env("StorageEnv", RLLibStorageEnv)
+register_env("StorageEnv", RLLibConFormSimStorageEnv)
 
 config={
     "env": "StorageEnv",
@@ -70,14 +57,11 @@ config={
     "num_gpus" : 1,
     # "num_sgd_iter": 10,
     "num_workers": 4,
-    "multiagent": {
-        "policies": policies,
-        "policy_mapping_fn": (lambda agent_id: "test"),
-    },
     # "callbacks": {
     #     "on_episode_end": on_episode_end,
     # }
 }
+
 
 result = tune.run(
     "IMPALA",

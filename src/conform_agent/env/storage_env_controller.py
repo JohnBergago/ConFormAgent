@@ -3,7 +3,7 @@ import os
 import copy
 from conform_agent.env.config.storage_config import CAMERA_TYPES, DEFAULT_ENV_CONFIG
 from conform_agent.env.unity.int_list_property_channel import IntListPropertiesChannel
-
+from conform_agent.env.conformsim_unity_env_controller import ConFormSimUnityEnvController
 import mlagents_envs
 from mlagents_envs.side_channel.environment_parameters_channel import EnvironmentParametersChannel
 from mlagents_envs.side_channel.engine_configuration_channel import EngineConfigurationChannel, EngineConfig
@@ -12,7 +12,7 @@ from ray.tune.utils import deep_update
 
 from conform_agent.env.unity.util import start_unity_env
 
-class StorageEnvController:
+class StorageEnvController(ConFormSimUnityEnvController):
 
     _BASE_PORT = 5004
     
@@ -32,30 +32,11 @@ class StorageEnvController:
             self.engine_channel,
             self.color_pool_channel,]
         
-        # depending on the task level the result on solving the env is different
+        # flag whether the config has been apllied to the environment
         self.is_already_initialized = False
-        self.config = dict()
-        self.update_config(config)
+        # create environment with config and side channels
+        super().__init__(config, DEFAULT_ENV_CONFIG, side_channels=side_channels)
 
-        # check for project dir environment variable
-        proj_dir = os.getenv("CONFORM_PROJ_DIR")
-        if proj_dir is None:
-            raise ("Couldn't find CONFORM_PROJ_DIR environment variable!" +
-                "Did you source the env.sh file?")
-        
-        # try to init the UnityEnvironment
-        if not self.config.get('env_name') or self.config.get("env_name") == None:
-            env_dir = None
-        else:
-            env_dir = (proj_dir + "/opt/ConFormSim/build/" + self.config.get('env_name'))
-        
-        self.env = start_unity_env(
-            file_name=env_dir,
-            worker_id=0,
-            base_port=self._BASE_PORT,
-            no_graphics=self.config.get("no_graphics"),
-            side_channels=side_channels,
-        )        
 
     def apply_config(self):
         # set FloatProperties
@@ -160,15 +141,3 @@ class StorageEnvController:
             "colorPool", 
             self.config.get("color_pool"))
         self.is_already_initialized = True
-
-    def update_config(self, config):
-        # update existing config with new keys
-        self.config.update(config)
-        # check if everything is valid
-        self.config = deep_update(
-            copy.deepcopy(DEFAULT_ENV_CONFIG),
-            self.config, 
-            new_keys_allowed=False, 
-            allow_new_subkey_list = [])
-        self.apply_config()
-        return True
