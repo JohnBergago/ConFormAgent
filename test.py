@@ -1,8 +1,19 @@
 from conform_agent.env.rllib.storage_env import RLLibConFormSimStorageEnv
+from conform_agent.models.tf.simple_rcnn import SimpleRCNNModel
 import ray
 from ray import tune
 from ray.tune.registry import register_env
+from ray.rllib.agents.callbacks import DefaultCallbacks
 from ray.rllib.agents.impala import ImpalaTrainer
+
+from typing import Dict, Optional, TYPE_CHECKING
+
+from ray.rllib.env import BaseEnv
+from ray.rllib.policy import Policy
+from ray.rllib.policy.sample_batch import SampleBatch
+from ray.rllib.evaluation import MultiAgentEpisode
+from ray.rllib.utils.typing import AgentID, PolicyID
+from ray.rllib.models import ModelCatalog
 
 
 env_config = {
@@ -10,7 +21,7 @@ env_config = {
     # Whether to use visual observations or vector observation of the full env.
     "use_visual" : False,
     # Maximum number of steps until a single agent in the environment will be reset.
-    "max_steps": 150,
+    "max_steps": 200,
     # Task difficulty to fulfill. Currently there are 3 levels:
     # 1 - As soon as an item is picked up the episode ends.
     # 2 - As soon as an item was brought to the correct target, the episode ends.
@@ -39,37 +50,127 @@ env_config = {
     },
 }
 
-def on_episode_end(info):
-    episode = info["episode"]
-    episode.custom_metrics["fraction_solved"] =[]
-    for agent, info in episode._agent_to_last_info.items():
-        if 'solved' in info:
-            episode.custom_metrics["fraction_solved"].append(int(info['solved']))
+class ConFormCallbacks(DefaultCallbacks):
+    def on_episode_end(self, *, 
+                       worker: "RolloutWorker", 
+                       base_env: BaseEnv, 
+                       policies: Dict[PolicyID, Policy], 
+                       episode: MultiAgentEpisode, 
+                       env_index: Optional[int], **kwargs) -> None:
+        episode.custom_metrics["fraction_solved"] =[]
+        for agent, info in episode._agent_to_last_info.items():
+            if 'interrupted' in info:
+                episode.custom_metrics["fraction_solved"].append(int(not info['interrupted']))
+        
 
 # ray initialization and stuff
 # ray.init(local_mode=True, num_cpus=3, num_gpus=1)
 ray.init(address='auto')
 register_env("StorageEnv", RLLibConFormSimStorageEnv)
+ModelCatalog.register_custom_model("SimpleRCNNModel", SimpleRCNNModel)
 
 config={
     "env": "StorageEnv",
     "env_config": env_config,
     "num_gpus" : 1,
-    # "num_sgd_iter": 10,
-    "num_workers": 4,
-    # "callbacks": {
-    #     "on_episode_end": on_episode_end,
-    # }
+    
+    "model":{
+        "custom_model": "SimpleRCNNModel",
+        "custom_model_config": {
+            # Defines the convolutiontional layers. For each layer there has
+            # to be [num_filters, kernel, stride]. 
+            "conv_layers": [],
+            # Defines the dense layers following the convolutional layers (if
+            # any). For each layer the num_hidden units has to be defined. 
+            "dense_layers": [128, 64, 32, 16], 
+            # whether to use a LSTM layer after the dense layers.
+            "use_recurrent": False,
+        },
+    },
+
+    # System params.
+    #
+    # == Overview of data flow in IMPALA ==
+    # 1. Policy evaluation in parallel across `num_workers` actors produces
+    #    batches of size `rollout_fragment_length * num_envs_per_worker`.
+    # 2. If enabled, the replay buffer stores and produces batches of size
+    #    `rollout_fragment_length * num_envs_per_worker`.
+    # 3. If enabled, the minibatch ring buffer stores and replays batches of
+    #    size `train_batch_size` up to `num_sgd_iter` times per batch.
+    # 4. The learner thread executes data parallel SGD across `num_gpus` GPUs
+    #    on batches of size `train_batch_size`.
+    #
+    "rollout_fragment_length": 50,
+    "train_batch_size": 2000,
+    "min_iter_time_s": 10,
+    "num_workers": 0,
+    # number of GPUs the learner should use.
+    "num_gpus": 1,
+    # set >1 to load data into GPUs in parallel. Increases GPU memory usage
+    # proportionally with the number of buffers.
+    "num_data_loader_buffers": 1,
+    # how many train batches should be retained for minibatching. This conf
+    # only has an effect if `num_sgd_iter > 1`.
+    "minibatch_buffer_size": 10,
+    # number of passes to make over each train batch
+    "num_sgd_iter": 8,
+    # set >0 to enable experience replay. Saved samples will be replayed with
+    # a p:1 proportion to new data samples.
+    "replay_proportion": 0.5,
+    # number of sample batches to store for replay. The number of transitions
+    # saved total will be (replay_buffer_num_slots * rollout_fragment_length).
+    "replay_buffer_num_slots": 20,
+    # max queue size for train batches feeding into the learner
+    "learner_queue_size": 16,
+    # wait for train batches to be available in minibatch buffer queue
+    # this many seconds. This may need to be increased e.g. when training
+    # with a slow environment
+    "learner_queue_timeout": 300,
+    # level of queuing for sampling.
+    "max_sample_requests_in_flight_per_worker": 2,
+    # max number of workers to broadcast one set of weights to
+    "broadcast_interval": 1,
+    # use intermediate actors for multi-level aggregation. This can make sense
+    # if ingesting >2GB/s of samples, or if the data requires decompression.
+    "num_aggregation_workers": 0,
+
+    # Learning params.
+    "grad_clip": 40.0,
+    # either "adam" or "rmsprop"
+    "opt_type": "adam",
+    "lr": 3e-4,
+    "lr_schedule": [
+        [0, 3e-4],
+        [3000000, 2.5e-4],
+        [6000000, 2.0e-4],
+        [18000000, 1.5e-4],
+    ],
+    # rmsprop considered
+    "decay": 0.99,
+    "momentum": 0.0,
+    "epsilon": 0.1,
+    # balancing the three losses
+    "vf_loss_coeff": 0.8,
+    "entropy_coeff": 0.01,
+    "entropy_coeff_schedule": [
+        [0, 0.015],
+        [6000000, 0.01],
+        [12000000, 5e-3],
+    ],
+
+    "callbacks": ConFormCallbacks,
 }
 
 
 result = tune.run(
     "IMPALA",
     stop={
-        "timesteps_total": 16000000,
+        # "timesteps_total": 10000000,
     },
-    config = config,
-    max_failures=1 
+    checkpoint_at_end=True,
+    checkpoint_freq=50,
+    config = config, 
+    # resume=True,
     )
 
 
