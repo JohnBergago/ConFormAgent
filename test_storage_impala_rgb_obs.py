@@ -7,6 +7,7 @@ from ray.rllib.agents.callbacks import DefaultCallbacks
 from ray.rllib.agents.impala import ImpalaTrainer
 
 from typing import Dict, Optional, TYPE_CHECKING
+import random
 
 from ray.rllib.env import BaseEnv
 from ray.rllib.policy import Policy
@@ -14,12 +15,13 @@ from ray.rllib.policy.sample_batch import SampleBatch
 from ray.rllib.evaluation import MultiAgentEpisode
 from ray.rllib.utils.typing import AgentID, PolicyID
 from ray.rllib.models import ModelCatalog
+from ray.tune.schedulers import PopulationBasedTraining
 
 
 env_config = {
     "env_name":"StorageEnvironmentGrid",
     # Whether to use visual observations or vector observation of the full env.
-    "use_visual" : False,
+    "use_visual" : True,
     # Maximum number of steps until a single agent in the environment will be reset.
     "max_steps": 200,
     # Task difficulty to fulfill. Currently there are 3 levels:
@@ -35,6 +37,17 @@ env_config = {
     # Whether to use a object property camera, that renders for each pixel of an
     # image the features of the object at that position on screen.
     "use_object_property_camera": False,
+
+    #################################################################################
+    # Observation Settings
+    #################################################################################
+    # The type of camera that should be used for visual observations:
+    #   TopDownCamera: Overview over the complete area
+    #   TopDownFollowCamera: A fixed size camera following the agent.
+    #   EgoCamera: Ego perspective of the agent
+    "camera_type": "TopDownFollowCamera",
+    # size of the visual observation (images) in pixels [width, height]
+    "vis_obs_size": [42, 42],
 
     "num_train_areas": 8,
     #  More technical configurations of the simulation engine. More details in 
@@ -72,17 +85,18 @@ ModelCatalog.register_custom_model("SimpleRCNNModel", SimpleRCNNModel)
 config={
     "env": "StorageEnv",
     "env_config": env_config,
-    "num_gpus" : 1,
     
     "model":{
         "custom_model": "SimpleRCNNModel",
         "custom_model_config": {
             # Defines the convolutiontional layers. For each layer there has
             # to be [num_filters, kernel, stride]. 
-            "conv_layers": [],
+            "conv_layers": [
+                    [16, [8, 8], 4], 
+                    [16, [4, 4], 2]],
             # Defines the dense layers following the convolutional layers (if
             # any). For each layer the num_hidden units has to be defined. 
-            "dense_layers": [128, 64, 32, 16], 
+            "dense_layers": [128, 128],
             # whether to use a LSTM layer after the dense layers.
             "use_recurrent": False,
         },
@@ -103,9 +117,9 @@ config={
     "rollout_fragment_length": 50,
     "train_batch_size": 2000,
     "min_iter_time_s": 10,
-    "num_workers": 0,
+    "num_workers": 2,
     # number of GPUs the learner should use.
-    "num_gpus": 1,
+    "num_gpus": 0.5,
     # set >1 to load data into GPUs in parallel. Increases GPU memory usage
     # proportionally with the number of buffers.
     "num_data_loader_buffers": 1,
@@ -113,13 +127,13 @@ config={
     # only has an effect if `num_sgd_iter > 1`.
     "minibatch_buffer_size": 10,
     # number of passes to make over each train batch
-    "num_sgd_iter": 8,
+    "num_sgd_iter": 30,
     # set >0 to enable experience replay. Saved samples will be replayed with
     # a p:1 proportion to new data samples.
-    "replay_proportion": 0.5,
+    "replay_proportion": 0.2,
     # number of sample batches to store for replay. The number of transitions
     # saved total will be (replay_buffer_num_slots * rollout_fragment_length).
-    "replay_buffer_num_slots": 20,
+    "replay_buffer_num_slots": 10,
     # max queue size for train batches feeding into the learner
     "learner_queue_size": 16,
     # wait for train batches to be available in minibatch buffer queue
@@ -139,12 +153,8 @@ config={
     # either "adam" or "rmsprop"
     "opt_type": "adam",
     "lr": 3e-4,
-    "lr_schedule": [
-        [0, 3e-4],
-        [3000000, 2.5e-4],
-        [6000000, 2.0e-4],
-        [18000000, 1.5e-4],
-    ],
+    "lr_schedule": None,
+    
     # rmsprop considered
     "decay": 0.99,
     "momentum": 0.0,
@@ -152,26 +162,45 @@ config={
     # balancing the three losses
     "vf_loss_coeff": 0.8,
     "entropy_coeff": 0.01,
-    "entropy_coeff_schedule": [
-        [0, 0.015],
-        [6000000, 0.01],
-        [12000000, 5e-3],
-    ],
+    "entropy_coeff_schedule": None,
 
     "callbacks": ConFormCallbacks,
 }
 
+scheduler = PopulationBasedTraining(
+    time_attr="training_iteration",
+    perturbation_interval=100,
+    hyperparam_mutations={
+        "lr": lambda: random.uniform(1e-4, 2e-2),
+        "vf_loss_coeff": lambda: random.uniform(0.5, 1.0),
+        "entropy_coeff": lambda: random.uniform(5e-3, 2e-2),
+    }
+)
 
 result = tune.run(
     "IMPALA",
-    stop={
-        # "timesteps_total": 10000000,
-    },
+    name="pbt_impala_rgb_obs",
+    scheduler=scheduler,
+    metric="episode_reward_mean",
+    mode="max",
+    reuse_actors=False,
+    checkpoint_freq=100,
     checkpoint_at_end=True,
-    checkpoint_freq=50,
-    config = config, 
-    # resume=True,
-    )
+    config=config,
+    num_samples=3,
+    # resume = True,
+)
+print("Best hyperparameters found were: ", result.best_config)
+# result = tune.run(
+#     "IMPALA",
+#     stop={
+#         # "timesteps_total": 10000000,
+#     },
+#     checkpoint_at_end=True,
+#     checkpoint_freq=50,
+#     config = config, 
+#     resume=True,
+#     )
 
 
 
