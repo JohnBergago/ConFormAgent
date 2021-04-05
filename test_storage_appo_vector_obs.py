@@ -77,7 +77,6 @@ ModelCatalog.register_custom_model("SimpleRCNNModel", SimpleRCNNModel)
 config={
     "env": "StorageEnv",
     "env_config": env_config,
-    "num_gpus" : 0.5,
     
     "model":{
         "custom_model": "SimpleRCNNModel",
@@ -87,7 +86,7 @@ config={
             "conv_layers": [],
             # Defines the dense layers following the convolutional layers (if
             # any). For each layer the num_hidden units has to be defined. 
-            "dense_layers": [64]*5, 
+            "dense_layers": [128]*5, 
             # whether to use a LSTM layer after the dense layers.
             "use_recurrent": False,
         },
@@ -112,7 +111,7 @@ config={
 
     # == PPO KL Loss options ==
     "use_kl_loss": False,
-    "kl_coeff": 0.0,
+    "kl_coeff": 0.2,
     "kl_target": 0.01,
 
     # System params.
@@ -176,6 +175,9 @@ config={
     "vf_loss_coeff": 1.0,
     "entropy_coeff": 1.5e-2,
     "entropy_coeff_schedule": None,
+
+    # Discount factor of the MDP.
+    "gamma": 0.90,
 
     "callbacks": ConFormCallbacks,
 }

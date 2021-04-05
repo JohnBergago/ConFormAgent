@@ -51,7 +51,7 @@ DEFAULT_ENV_CONFIG = {
     # image the features of the object at that position on screen.
     "use_object_property_camera": False,
     # Whether to discard object properties in the returned observation vector
-    # and only use positions and rotations instead.
+    # and only use positions, rotations, and colors instead.
     "no_object_properties_for_vector_obs": False,
     # Return visual observations as uint8 (0-255) matrices instead of float (0.0-1.0).
     "uint8_visual": False,
