@@ -50,9 +50,6 @@ DEFAULT_ENV_CONFIG = {
     # Whether to use a object property camera, that renders for each pixel of an
     # image the features of the object at that position on screen.
     "use_object_property_camera": False,
-    # Whether to discard object properties in the returned observation vector
-    # and only use positions, rotations, and colors instead.
-    "no_object_properties_for_vector_obs": False,
     # Return visual observations as uint8 (0-255) matrices instead of float (0.0-1.0).
     "uint8_visual": False,
     # If True, turn branched discrete action spaces into a Discrete space rather than

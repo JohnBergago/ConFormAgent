@@ -37,9 +37,6 @@ env_config = {
     # Whether to use a object property camera, that renders for each pixel of an
     # image the features of the object at that position on screen.
     "use_object_property_camera": False,
-    # Whether to discard object properties in the returned observation vector
-    # and only use positions and rotations instead.
-    "no_object_properties_for_vector_obs": True,
 
     "num_train_areas": 8,
     #  More technical configurations of the simulation engine. More details in 
@@ -118,7 +115,7 @@ config={
     # only has an effect if `num_sgd_iter > 1`.
     "minibatch_buffer_size": 20,
     # number of passes to make over each train batch
-    "num_sgd_iter": 30,
+    "num_sgd_iter": 3,
     # set >0 to enable experience replay. Saved samples will be replayed with
     # a p:1 proportion to new data samples.
     "replay_proportion": 0.2,
