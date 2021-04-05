@@ -106,6 +106,24 @@ class ConFormSimUnity3DEnv(ExternalEnv):
                 self._behavior_name)
             # first process all envs/"agents" in decision steps
             actions = []
+            # process all envs/"agents" that finished their episodes in terminal
+            # steps
+            for agent_id in terminal_steps.agent_id:
+                # first check if a new episode needs to be started
+                if agent_id not in self.agentID_to_episodeID.keys():
+                    episode_id = self.start_episode() 
+                    self.agentID_to_episodeID[agent_id] = episode_id
+                episode_id = self.agentID_to_episodeID[agent_id]
+                # get observation, rewards and info
+                obs = terminal_steps[agent_id].obs
+                obs = obs[0] if len(obs) == 1 else obs
+                reward = terminal_steps[agent_id].reward
+                info = {"interrupted": terminal_steps[agent_id].interrupted}
+                self.log_returns(episode_id, reward, info)
+                # end episode and remove agent_id from self.agentID_to_episodeID
+                self.end_episode(episode_id, obs)
+                self.agentID_to_episodeID.pop(agent_id)
+                
             for agent_id  in decision_steps.agent_id:
                 # first check if a new episode needs to be started
                 if agent_id not in self.agentID_to_episodeID.keys():
@@ -126,24 +144,6 @@ class ConFormSimUnity3DEnv(ExternalEnv):
                 else:
                     action_tuple = ActionTuple(discrete=np.array(actions))
             self.unity_env.set_actions(self._behavior_name, action_tuple)
-
-            # process all envs/"agents" that finished their episodes in terminal
-            # steps
-            for agent_id in terminal_steps.agent_id:
-                # first check if a new episode needs to be started
-                if agent_id not in self.agentID_to_episodeID.keys():
-                    episode_id = self.start_episode() 
-                    self.agentID_to_episodeID[agent_id] = episode_id
-                episode_id = self.agentID_to_episodeID[agent_id]
-                # get observation, rewards and info
-                obs = terminal_steps[agent_id].obs
-                obs = obs[0] if len(obs) == 1 else obs
-                reward = terminal_steps[agent_id].reward
-                info = {"interrupted": terminal_steps[agent_id].interrupted}
-                self.log_returns(episode_id, reward, info)
-                # end episode and remove agent_id from self.agentID_to_episodeID
-                self.end_episode(episode_id, obs)
-                self.agentID_to_episodeID.pop(agent_id)
 
             self.unity_env.step()
 

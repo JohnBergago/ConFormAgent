@@ -87,11 +87,33 @@ config={
             "conv_layers": [],
             # Defines the dense layers following the convolutional layers (if
             # any). For each layer the num_hidden units has to be defined. 
-            "dense_layers": [128]*5, 
+            "dense_layers": [64]*5, 
             # whether to use a LSTM layer after the dense layers.
             "use_recurrent": False,
         },
     },
+
+    # Whether to use V-trace weighted advantages. If false, PPO GAE
+    # advantages will be used instead.
+    "vtrace": True,
+
+    # == These two options only apply if vtrace: False ==
+    # Should use a critic as a baseline (otherwise don't use value
+    # baseline; required for using GAE).
+    "use_critic": True,
+    # If true, use the Generalized Advantage Estimator (GAE)
+    # with a value function, see https://arxiv.org/pdf/1506.02438.pdf.
+    "use_gae": True,
+    # GAE(lambda) parameter
+    "lambda": 0.95,
+
+    # == PPO surrogate loss options ==
+    "clip_param": 0.2,
+
+    # == PPO KL Loss options ==
+    "use_kl_loss": False,
+    "kl_coeff": 0.0,
+    "kl_target": 0.01,
 
     # System params.
     #
@@ -105,26 +127,26 @@ config={
     # 4. The learner thread executes data parallel SGD across `num_gpus` GPUs
     #    on batches of size `train_batch_size`.
     #
-    "rollout_fragment_length": 200,
-    "train_batch_size": 4000,
+    "rollout_fragment_length": 64,
+    "train_batch_size": 2048,
     "min_iter_time_s": 10,
-    "num_workers": 2,
+    "num_workers": 5,
     # number of GPUs the learner should use.
-    "num_gpus": 0.5,
+    "num_gpus": 1.0,
     # set >1 to load data into GPUs in parallel. Increases GPU memory usage
     # proportionally with the number of buffers.
     "num_data_loader_buffers": 1,
     # how many train batches should be retained for minibatching. This conf
     # only has an effect if `num_sgd_iter > 1`.
-    "minibatch_buffer_size": 20,
+    "minibatch_buffer_size": 10,
     # number of passes to make over each train batch
-    "num_sgd_iter": 30,
+    "num_sgd_iter": 3,
     # set >0 to enable experience replay. Saved samples will be replayed with
     # a p:1 proportion to new data samples.
-    "replay_proportion": 0.2,
+    "replay_proportion": 0.0,
     # number of sample batches to store for replay. The number of transitions
     # saved total will be (replay_buffer_num_slots * rollout_fragment_length).
-    "replay_buffer_num_slots": 20,
+    "replay_buffer_num_slots": 80,
     # max queue size for train batches feeding into the learner
     "learner_queue_size": 16,
     # wait for train batches to be available in minibatch buffer queue
@@ -143,7 +165,7 @@ config={
     "grad_clip": 40.0,
     # either "adam" or "rmsprop"
     "opt_type": "adam",
-    "lr": 3e-4,
+    "lr": 2e-4,
     "lr_schedule": None,
     
     # rmsprop considered
@@ -151,8 +173,8 @@ config={
     "momentum": 0.0,
     "epsilon": 0.1,
     # balancing the three losses
-    "vf_loss_coeff": 0.8,
-    "entropy_coeff": 0.01,
+    "vf_loss_coeff": 1.0,
+    "entropy_coeff": 1.5e-2,
     "entropy_coeff_schedule": None,
 
     "callbacks": ConFormCallbacks,
@@ -169,16 +191,16 @@ scheduler = PopulationBasedTraining(
 )
 
 result = tune.run(
-    "IMPALA",
-    name="pbt_impala_vector_obs",
-    scheduler=scheduler,
-    metric="episode_reward_mean",
-    mode="max",
+    "APPO",
+    name="appo_vector_obs",
+    # scheduler=scheduler,
+    # metric="episode_reward_mean",
+    # mode="max",
     reuse_actors=False,
     checkpoint_freq=60,
     checkpoint_at_end=True,
     config=config,
-    num_samples=3,
+    # num_samples=3,
     # resume = True,
 )
 print("Best hyperparameters found were: ", result.best_config)

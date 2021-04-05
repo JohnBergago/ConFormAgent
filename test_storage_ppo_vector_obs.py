@@ -170,7 +170,7 @@ result = tune.run(
     checkpoint_at_end=True,
     config=config,
     num_samples=1,
-    # resume = True,
+    resume = True,
 )
 print("Best hyperparameters found were: ", result.best_config)
 # result = tune.run(
