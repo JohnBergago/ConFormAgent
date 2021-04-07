@@ -1,61 +1,29 @@
+import random
+import numpy as np
 from conform_agent.env.rllib.storage_env import RLLibConFormSimStorageEnv
 from conform_agent.models.tf.simple_rcnn import SimpleRCNNModel
-from conform_agent.conform_callbacks import ConFormCallbacks
 import ray
 from ray import tune
 from ray.tune.registry import register_env
-
-import random
-
+from conform_agent.conform_callbacks import ConFormCallbacks
 from ray.rllib.models import ModelCatalog
-from ray.tune.schedulers import PopulationBasedTraining
+from ray.tune.schedulers import ASHAScheduler
 
+import experiments.storage_env_configs as StorageEnvConfig
 
-env_config = {
-    "env_name":"StorageEnvironmentGrid",
-    # Whether to use visual observations or vector observation of the full env.
-    "use_visual" : False,
-    # Maximum number of steps until a single agent in the environment will be reset.
-    "max_steps": 200,
-    # Task difficulty to fulfill. Currently there are 3 levels:
-    # 1 - As soon as an item is picked up the episode ends.
-    # 2 - As soon as an item was brought to the correct target, the episode ends.
-    # 3 - Only if all items are on their correct target, the episode ends.
-    # If episode_horizon is reached, the episode ends.
-    "task_level": 3,
-    # Whether to use ray perception with 30 rays around the agent detecting all items
-    # and base areas. Using this and visual observations might lead to strange
-    # behaviour.
-    "use_ray_perception" : False,
-    # Whether to use a object property camera, that renders for each pixel of an
-    # image the features of the object at that position on screen.
-    "use_object_property_camera": False,
-
-    "num_train_areas": 8,
-    #  More technical configurations of the simulation engine. More details in 
-    # DEFAULT_ENGINE_CONFIG
-    "engine_config": {
-        # Factor which is applied to the simulation speed from 1 to 100. Faster will 
-        # speed up training, but might break physics
-        "sim_speed": 100,
-        # Width of the window which the simulator creates.
-        "window_width": 640,
-        # Height of the window which the simulator creates.
-        "window_height": 360,
-    },
-}
-
-
+random.seed(42)
+np.random.seed(42)
 
 # ray initialization and stuff
 ray.init(local_mode=True, num_cpus=4, num_gpus=1)
 # ray.init(address='auto')
+
 register_env("StorageEnv", RLLibConFormSimStorageEnv)
 ModelCatalog.register_custom_model("SimpleRCNNModel", SimpleRCNNModel)
 
 config={
     "env": "StorageEnv",
-    "env_config": env_config,
+    "env_config": StorageEnvConfig.easy_vector_obs,
     
     "model":{
         "custom_model": "SimpleRCNNModel",
@@ -65,7 +33,7 @@ config={
             "conv_layers": [],
             # Defines the dense layers following the convolutional layers (if
             # any). For each layer the num_hidden units has to be defined. 
-            "dense_layers": [128]*5, 
+            "dense_layers": [64]*4, 
             # whether to use a LSTM layer after the dense layers.
             "use_recurrent": False,
         },
@@ -73,7 +41,7 @@ config={
 
     # Whether to use V-trace weighted advantages. If false, PPO GAE
     # advantages will be used instead.
-    "vtrace": False,
+    "vtrace": True,
 
     # == These two options only apply if vtrace: False ==
     # Should use a critic as a baseline (otherwise don't use value
@@ -90,8 +58,8 @@ config={
 
     # == PPO KL Loss options ==
     "use_kl_loss": True,
-    "kl_coeff": 0.2,
-    "kl_target": 0.01,
+    "kl_coeff": tune.uniform(0.3, 1),
+    "kl_target": tune.loguniform(3e-3, 3e-2),
 
     # System params.
     #
@@ -105,26 +73,26 @@ config={
     # 4. The learner thread executes data parallel SGD across `num_gpus` GPUs
     #    on batches of size `train_batch_size`.
     #
-    "rollout_fragment_length": 64,
-    "train_batch_size": 2048,
+    "rollout_fragment_length": tune.grid_search[64, 128, 256],
+    "train_batch_size": tune.sample_from(lambda spec: spec.config.rollout_fragment_length * 32),
     "min_iter_time_s": 10,
-    "num_workers": 3,
+    "num_workers": 2,
     # number of GPUs the learner should use.
-    "num_gpus": 1.0,
+    "num_gpus": 0.25,
     # set >1 to load data into GPUs in parallel. Increases GPU memory usage
     # proportionally with the number of buffers.
     "num_data_loader_buffers": 1,
     # how many train batches should be retained for minibatching. This conf
     # only has an effect if `num_sgd_iter > 1`.
-    "minibatch_buffer_size": 10,
+    "minibatch_buffer_size": 30,
     # number of passes to make over each train batch
-    "num_sgd_iter": 10,
+    "num_sgd_iter": tune.random.choice(3, 10, 30),
     # set >0 to enable experience replay. Saved samples will be replayed with
     # a p:1 proportion to new data samples.
     "replay_proportion": 0.0,
     # number of sample batches to store for replay. The number of transitions
     # saved total will be (replay_buffer_num_slots * rollout_fragment_length).
-    "replay_buffer_num_slots": 80,
+    "replay_buffer_num_slots": 0,
     # max queue size for train batches feeding into the learner
     "learner_queue_size": 16,
     # wait for train batches to be available in minibatch buffer queue
@@ -143,16 +111,16 @@ config={
     "grad_clip": 40.0,
     # either "adam" or "rmsprop"
     "opt_type": "adam",
-    "lr": 3e-4,
-    "lr_schedule": [[0, 0.0003], [64000000, 0]],
+    "lr":  tune.loguniform(1e-5, 1e-1),
+    "lr_schedule": None,
     
     # rmsprop considered
     "decay": 0.99,
     "momentum": 0.0,
     "epsilon": 0.1,
     # balancing the three losses
-    "vf_loss_coeff": 1.0,
-    "entropy_coeff": 1.5e-2,
+    "vf_loss_coeff": tune.random.uniform(0.5, 1.0),
+    "entropy_coeff": tune.random.uniform(0, 0.01),
     "entropy_coeff_schedule": None,
 
     # Discount factor of the MDP.
@@ -161,31 +129,34 @@ config={
     "callbacks": ConFormCallbacks,
 }
 
-scheduler = PopulationBasedTraining(
+stopping_criteria = {
+    "training_iteration": 100,
+    # "time_total_s" : 1800,
+}
+
+scheduler = ASHAScheduler(
+    metric="episode_reward_mean",
+    mode="max",
     time_attr="training_iteration",
-    perturbation_interval=60,
-    hyperparam_mutations={
-        "lr": lambda: random.uniform(1e-4, 2e-2),
-        "vf_loss_coeff": lambda: random.uniform(0.5, 1.0),
-        "entropy_coeff": lambda: random.uniform(5e-3, 2e-2),
-    }
+    grace_period=5,
+    max_t=100, 
 )
 
 result = tune.run(
     "APPO",
-    name="appo_vector_obs",
-    # scheduler=scheduler,
-    # metric="episode_reward_mean",
-    # mode="max",
+    name="appo_vector_obs_param_search",
+    scheduler=scheduler,
+    metric="episode_reward_mean",
+    mode="max",
+    stop=stopping_criteria,
     reuse_actors=False,
-    checkpoint_freq=60,
+    checkpoint_freq=10,
     checkpoint_at_end=True,
     config=config,
-    # num_samples=3,
+    num_samples=20,
     # resume = True,
 )
 print("Best hyperparameters found were: ", result.best_config)
-
 
 
 
