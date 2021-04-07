@@ -66,14 +66,16 @@ class ConFormCallbacks(DefaultCallbacks):
         
 
 # ray initialization and stuff
-# ray.init(local_mode=True, num_cpus=3, num_gpus=1)
-ray.init(address='auto')
+ray.init(local_mode=True, num_cpus=4, num_gpus=1)
+# ray.init(address='auto')
 register_env("StorageEnv", RLLibConFormSimStorageEnv)
 ModelCatalog.register_custom_model("SimpleRCNNModel", SimpleRCNNModel)
 
 config={
     "env": "StorageEnv",
     "env_config": env_config,
+    "num_gpus" : 1.0,
+    "num_workers": 3, 
     
     "model":{
         "custom_model": "SimpleRCNNModel",
@@ -89,92 +91,54 @@ config={
         },
     },
 
-    # Whether to use V-trace weighted advantages. If false, PPO GAE
-    # advantages will be used instead.
-    "vtrace": True,
-
-    # == These two options only apply if vtrace: False ==
-    # Should use a critic as a baseline (otherwise don't use value
-    # baseline; required for using GAE).
+    # Should use a critic as a baseline (otherwise don't use value baseline;
+    # required for using GAE).
     "use_critic": True,
     # If true, use the Generalized Advantage Estimator (GAE)
     # with a value function, see https://arxiv.org/pdf/1506.02438.pdf.
     "use_gae": True,
-    # GAE(lambda) parameter
+    # The GAE (lambda) parameter.
     "lambda": 0.95,
-
-    # == PPO surrogate loss options ==
-    "clip_param": 0.2,
-
-    # == PPO KL Loss options ==
-    "use_kl_loss": False,
+    # Initial coefficient for KL divergence.
     "kl_coeff": 0.2,
-    "kl_target": 0.01,
-
-    # System params.
-    #
-    # == Overview of data flow in IMPALA ==
-    # 1. Policy evaluation in parallel across `num_workers` actors produces
-    #    batches of size `rollout_fragment_length * num_envs_per_worker`.
-    # 2. If enabled, the replay buffer stores and produces batches of size
-    #    `rollout_fragment_length * num_envs_per_worker`.
-    # 3. If enabled, the minibatch ring buffer stores and replays batches of
-    #    size `train_batch_size` up to `num_sgd_iter` times per batch.
-    # 4. The learner thread executes data parallel SGD across `num_gpus` GPUs
-    #    on batches of size `train_batch_size`.
-    #
+    # Size of batches collected from each worker.
     "rollout_fragment_length": 64,
+    # Number of timesteps collected for each SGD round. This defines the size
+    # of each SGD epoch.
     "train_batch_size": 2048,
-    "min_iter_time_s": 10,
-    "num_workers": 5,
-    # number of GPUs the learner should use.
-    "num_gpus": 1.0,
-    # set >1 to load data into GPUs in parallel. Increases GPU memory usage
-    # proportionally with the number of buffers.
-    "num_data_loader_buffers": 1,
-    # how many train batches should be retained for minibatching. This conf
-    # only has an effect if `num_sgd_iter > 1`.
-    "minibatch_buffer_size": 10,
-    # number of passes to make over each train batch
+    # Total SGD batch size across all devices for SGD. This defines the
+    # minibatch size within each epoch.
+    "sgd_minibatch_size": 64,
+    # Whether to shuffle sequences in the batch when training (recommended).
+    "shuffle_sequences": True,
+    # Number of SGD iterations in each outer loop (i.e., number of epochs to
+    # execute per train batch).
     "num_sgd_iter": 3,
-    # set >0 to enable experience replay. Saved samples will be replayed with
-    # a p:1 proportion to new data samples.
-    "replay_proportion": 0.0,
-    # number of sample batches to store for replay. The number of transitions
-    # saved total will be (replay_buffer_num_slots * rollout_fragment_length).
-    "replay_buffer_num_slots": 80,
-    # max queue size for train batches feeding into the learner
-    "learner_queue_size": 16,
-    # wait for train batches to be available in minibatch buffer queue
-    # this many seconds. This may need to be increased e.g. when training
-    # with a slow environment
-    "learner_queue_timeout": 300,
-    # level of queuing for sampling.
-    "max_sample_requests_in_flight_per_worker": 2,
-    # max number of workers to broadcast one set of weights to
-    "broadcast_interval": 1,
-    # use intermediate actors for multi-level aggregation. This can make sense
-    # if ingesting >2GB/s of samples, or if the data requires decompression.
-    "num_aggregation_workers": 0,
-
-    # Learning params.
-    "grad_clip": 40.0,
-    # either "adam" or "rmsprop"
-    "opt_type": "adam",
-    "lr": 2e-4,
-    "lr_schedule": None,
-    
-    # rmsprop considered
-    "decay": 0.99,
-    "momentum": 0.0,
-    "epsilon": 0.1,
-    # balancing the three losses
+    # Stepsize of SGD.
+    "lr": 3e-4,
+    # Learning rate schedule.
+    "lr_schedule": [[0, 0.0003], [64000000, 0]],
+    # Coefficient of the value function loss. IMPORTANT: you must tune this if
+    # you set vf_share_layers=True inside your model's config.
     "vf_loss_coeff": 1.0,
-    "entropy_coeff": 1.5e-2,
-    "entropy_coeff_schedule": None,
 
-    # Discount factor of the MDP.
-    "gamma": 0.90,
+    # Coefficient of the entropy regularizer.
+    "entropy_coeff": 1.5e-2,
+    # Decay schedule for the entropy regularizer.
+    "entropy_coeff_schedule": None,
+    # PPO clip parameter.
+    "clip_param": 0.2,
+    # Clip param for the value function. Note that this is sensitive to the
+    # scale of the rewards. If your expected V is large, increase this.
+    "vf_clip_param": 10.0,
+    # If specified, clip the global norm of gradients by this amount.
+    "grad_clip": None,
+    # Target value for KL divergence.
+    "kl_target": 0.01,
+    # Whether to rollout "complete_episodes" or "truncate_episodes".
+    "batch_mode": "truncate_episodes",
+    # Which observation filter to apply to the observation.
+    "observation_filter": "NoFilter",
 
     "callbacks": ConFormCallbacks,
 }
@@ -190,16 +154,19 @@ scheduler = PopulationBasedTraining(
 )
 
 result = tune.run(
-    "APPO",
-    name="appo_vector_obs",
+    "PPO",
+    name="storage_ppo_vector_obs",
     # scheduler=scheduler,
     # metric="episode_reward_mean",
     # mode="max",
+    stop={
+        "timesteps_total": 64000000,
+    },
     reuse_actors=False,
     checkpoint_freq=60,
     checkpoint_at_end=True,
     config=config,
-    # num_samples=3,
+    num_samples=1,
     # resume = True,
 )
 print("Best hyperparameters found were: ", result.best_config)
