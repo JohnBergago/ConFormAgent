@@ -29,5 +29,6 @@ done
 python $CONFORM_PROJ_DIR/etc/kill_xvfb.py
 ray exec $yaml_file.running "source ${CONFORM_PROJ_DIR}/env.sh &&
                      ray stop &&  
-                     ray teardown ~/ray_bootstrap_config.yaml --yes"
+                     ray teardown ~/ray_bootstrap_config.yaml --yes &&
+                     rm -r /tmp/ConFormSim"
 rm -r $yaml_file.running

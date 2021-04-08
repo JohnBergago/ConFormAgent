@@ -36,7 +36,7 @@ docker:
 provider:
     type: local
     head_ip: florian-laptop
-    worker_ips: [florian-pc]
+    worker_ips: [florian-pc, manuel-pc]
 
 # How Ray will authenticate with newly launched nodes. In order to run this with the
 # start_cluster.sh the field ssh_user should be set to user.
@@ -69,7 +69,7 @@ worker_nodes: {}
 # Files or directories to copy to the head and worker nodes. The format is a
 # dictionary from REMOTE_PATH: LOCAL_PATH, e.g.
 file_mounts: {
-   "CONFORM_PROJ_DIR/opt/ConFormSim/build": "CONFORM_PROJ_DIR/opt/ConFormSim/build",
+    "/tmp/ConFormSim/build" : "CONFORM_PROJ_DIR/opt/ConFormSim/build",
     "/tmp/current_branch_sha": "CONFORM_PROJ_DIR/.git/refs/heads/main",
 }
 
@@ -101,7 +101,10 @@ initialization_commands: []
 
 # List of shell commands to run to set up each nodes.
 setup_commands:
-    - test -e ConFormAgent || ( git clone https://github.com/JohnBergago/ConFormAgent.git && ./ConFormAgent/setup.sh )
+    - >- 
+        test -e ConFormAgent || ( git clone https://github.com/JohnBergago/ConFormAgent.git &&
+        ./ConFormAgent/setup.sh && 
+        ln -s /tmp/ConFormSim/build CONFORM_PROJ_DIR/opt/ConFormSim/build )
     - cd ConFormAgent && git fetch && git checkout `cat /tmp/current_branch_sha`
     - . CONFORM_PROJ_DIR/env.sh
 
