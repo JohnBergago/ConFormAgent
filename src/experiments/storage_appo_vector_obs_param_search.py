@@ -127,7 +127,6 @@ config={
     "gamma": 0.90,
 
     "callbacks": ConFormCallbacks,
-    "framework": "tfe",
 }
 
 stopping_criteria = {

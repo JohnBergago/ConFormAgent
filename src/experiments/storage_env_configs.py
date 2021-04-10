@@ -19,7 +19,7 @@ easy_vector_obs = {
     "use_object_property_camera": False,
 
     # Whether to run the Unity simulator in no-graphics mode.
-    "no_graphics": True,
+    "no_graphics": False,
 
     "num_train_areas": 8,
     #  More technical configurations of the simulation engine. More details in 

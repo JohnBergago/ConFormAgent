@@ -10,52 +10,17 @@ import random
 from ray.rllib.models import ModelCatalog
 from ray.tune.schedulers import PopulationBasedTraining
 
-
-env_config = {
-    "env_name":"StorageEnvironmentGrid",
-    # Whether to use visual observations or vector observation of the full env.
-    "use_visual" : False,
-    # Maximum number of steps until a single agent in the environment will be reset.
-    "max_steps": 200,
-    # Task difficulty to fulfill. Currently there are 3 levels:
-    # 1 - As soon as an item is picked up the episode ends.
-    # 2 - As soon as an item was brought to the correct target, the episode ends.
-    # 3 - Only if all items are on their correct target, the episode ends.
-    # If episode_horizon is reached, the episode ends.
-    "task_level": 3,
-    # Whether to use ray perception with 30 rays around the agent detecting all items
-    # and base areas. Using this and visual observations might lead to strange
-    # behaviour.
-    "use_ray_perception" : False,
-    # Whether to use a object property camera, that renders for each pixel of an
-    # image the features of the object at that position on screen.
-    "use_object_property_camera": False,
-
-    "num_train_areas": 8,
-    #  More technical configurations of the simulation engine. More details in 
-    # DEFAULT_ENGINE_CONFIG
-    "engine_config": {
-        # Factor which is applied to the simulation speed from 1 to 100. Faster will 
-        # speed up training, but might break physics
-        "sim_speed": 100,
-        # Width of the window which the simulator creates.
-        "window_width": 640,
-        # Height of the window which the simulator creates.
-        "window_height": 360,
-    },
-}
-
-
+import experiments.storage_env_configs as StorageEnvConfig
 
 # ray initialization and stuff
-# ray.init(local_mode=True, num_cpus=4, num_gpus=1)
-ray.init(address='auto')
+ray.init(local_mode=True, num_cpus=4, num_gpus=1)
+# ray.init(address='auto')
 register_env("StorageEnv", RLLibConFormSimStorageEnv)
 ModelCatalog.register_custom_model("SimpleRCNNModel", SimpleRCNNModel)
 
 config={
     "env": "StorageEnv",
-    "env_config": env_config,
+    "env_config": StorageEnvConfig.easy_vector_obs,
     
     "model":{
         "custom_model": "SimpleRCNNModel",
@@ -108,7 +73,7 @@ config={
     "rollout_fragment_length": 64,
     "train_batch_size": 2048,
     "min_iter_time_s": 10,
-    "num_workers": 4,
+    "num_workers": 2,
     # number of GPUs the learner should use.
     "num_gpus": 0.5,
     # set >1 to load data into GPUs in parallel. Increases GPU memory usage
