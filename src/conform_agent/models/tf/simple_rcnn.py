@@ -133,7 +133,6 @@ class SimpleRCNNModel(RecurrentNetwork):
                 inputs=input_layer, 
                 outputs=[policy_layer, value_layer])
         self.register_variables(self.base_model.variables)
-        print(self.base_model.summary())
 
     # Implement the core forward method
     def forward(self, input_dict, state, seq_lens):
