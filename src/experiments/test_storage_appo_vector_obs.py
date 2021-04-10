@@ -48,8 +48,8 @@ env_config = {
 
 
 # ray initialization and stuff
-ray.init(local_mode=True, num_cpus=4, num_gpus=1)
-# ray.init(address='auto')
+# ray.init(local_mode=True, num_cpus=4, num_gpus=1)
+ray.init(address='auto')
 register_env("StorageEnv", RLLibConFormSimStorageEnv)
 ModelCatalog.register_custom_model("SimpleRCNNModel", SimpleRCNNModel)
 
@@ -65,7 +65,7 @@ config={
             "conv_layers": [],
             # Defines the dense layers following the convolutional layers (if
             # any). For each layer the num_hidden units has to be defined. 
-            "dense_layers": [128]*5, 
+            "dense_layers": [64]*4, 
             # whether to use a LSTM layer after the dense layers.
             "use_recurrent": False,
         },
@@ -73,7 +73,7 @@ config={
 
     # Whether to use V-trace weighted advantages. If false, PPO GAE
     # advantages will be used instead.
-    "vtrace": False,
+    "vtrace": True,
 
     # == These two options only apply if vtrace: False ==
     # Should use a critic as a baseline (otherwise don't use value
@@ -90,8 +90,8 @@ config={
 
     # == PPO KL Loss options ==
     "use_kl_loss": True,
-    "kl_coeff": 0.2,
-    "kl_target": 0.01,
+    "kl_coeff": 0.6,
+    "kl_target": 0.006,
 
     # System params.
     #
@@ -108,17 +108,17 @@ config={
     "rollout_fragment_length": 64,
     "train_batch_size": 2048,
     "min_iter_time_s": 10,
-    "num_workers": 3,
+    "num_workers": 4,
     # number of GPUs the learner should use.
-    "num_gpus": 1.0,
+    "num_gpus": 0.5,
     # set >1 to load data into GPUs in parallel. Increases GPU memory usage
     # proportionally with the number of buffers.
     "num_data_loader_buffers": 1,
     # how many train batches should be retained for minibatching. This conf
     # only has an effect if `num_sgd_iter > 1`.
-    "minibatch_buffer_size": 10,
+    "minibatch_buffer_size": 30,
     # number of passes to make over each train batch
-    "num_sgd_iter": 10,
+    "num_sgd_iter": 30,
     # set >0 to enable experience replay. Saved samples will be replayed with
     # a p:1 proportion to new data samples.
     "replay_proportion": 0.0,
@@ -143,16 +143,16 @@ config={
     "grad_clip": 40.0,
     # either "adam" or "rmsprop"
     "opt_type": "adam",
-    "lr": 3e-4,
-    "lr_schedule": [[0, 0.0003], [64000000, 0]],
+    "lr": 3e-3,
+    "lr_schedule": None,
     
     # rmsprop considered
     "decay": 0.99,
     "momentum": 0.0,
     "epsilon": 0.1,
     # balancing the three losses
-    "vf_loss_coeff": 1.0,
-    "entropy_coeff": 1.5e-2,
+    "vf_loss_coeff": 0.57,
+    "entropy_coeff": 3e-3,
     "entropy_coeff_schedule": None,
 
     # Discount factor of the MDP.
@@ -163,28 +163,28 @@ config={
 
 scheduler = PopulationBasedTraining(
     time_attr="training_iteration",
-    perturbation_interval=60,
+    perturbation_interval=50,
     hyperparam_mutations={
-        "lr": lambda: random.uniform(1e-4, 2e-2),
-        "vf_loss_coeff": lambda: random.uniform(0.5, 1.0),
-        "entropy_coeff": lambda: random.uniform(5e-3, 2e-2),
+        "lr": lambda: random.uniform(1e-5, 2e-3),
+        "entropy_coeff": lambda: random.uniform(0, 1e-2),
     }
 )
 
 result = tune.run(
     "APPO",
-    name="appo_vector_obs",
-    # scheduler=scheduler,
-    # metric="episode_reward_mean",
-    # mode="max",
+    name="appo_vector_obs_pbt",
+    scheduler=scheduler,
+    metric="episode_reward_mean",
+    mode="max",
     reuse_actors=False,
-    checkpoint_freq=60,
+    checkpoint_freq=50,
     checkpoint_at_end=True,
     config=config,
-    # num_samples=3,
+    num_samples=4,
+    keep_checkpoints_num=4,
     # resume = True,
 )
-print("Best hyperparameters found were: ", result.best_config)
+print("Best hyperparameters found were: ", result.get_best_config())
 
 
 

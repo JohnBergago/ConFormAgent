@@ -15,8 +15,8 @@ random.seed(42)
 np.random.seed(42)
 
 # ray initialization and stuff
-ray.init(local_mode=True, num_cpus=4, num_gpus=1)
-# ray.init(address='auto')
+# ray.init(local_mode=True, num_cpus=4, num_gpus=1)
+ray.init(address='auto')
 
 register_env("StorageEnv", RLLibConFormSimStorageEnv)
 ModelCatalog.register_custom_model("SimpleRCNNModel", SimpleRCNNModel)
@@ -73,12 +73,12 @@ config={
     # 4. The learner thread executes data parallel SGD across `num_gpus` GPUs
     #    on batches of size `train_batch_size`.
     #
-    "rollout_fragment_length": tune.grid_search[64, 128, 256],
-    "train_batch_size": tune.sample_from(lambda spec: spec.config.rollout_fragment_length * 32),
+    "rollout_fragment_length": 64,
+    "train_batch_size": 2048,
     "min_iter_time_s": 10,
-    "num_workers": 2,
+    "num_workers": 4,
     # number of GPUs the learner should use.
-    "num_gpus": 0.25,
+    "num_gpus": 0.5,
     # set >1 to load data into GPUs in parallel. Increases GPU memory usage
     # proportionally with the number of buffers.
     "num_data_loader_buffers": 1,
@@ -86,7 +86,7 @@ config={
     # only has an effect if `num_sgd_iter > 1`.
     "minibatch_buffer_size": 30,
     # number of passes to make over each train batch
-    "num_sgd_iter": tune.random.choice(3, 10, 30),
+    "num_sgd_iter": 30,
     # set >0 to enable experience replay. Saved samples will be replayed with
     # a p:1 proportion to new data samples.
     "replay_proportion": 0.0,
@@ -111,7 +111,7 @@ config={
     "grad_clip": 40.0,
     # either "adam" or "rmsprop"
     "opt_type": "adam",
-    "lr":  tune.loguniform(1e-5, 1e-1),
+    "lr":  tune.loguniform(1e-5, 1e-2),
     "lr_schedule": None,
     
     # rmsprop considered
@@ -119,18 +119,19 @@ config={
     "momentum": 0.0,
     "epsilon": 0.1,
     # balancing the three losses
-    "vf_loss_coeff": tune.random.uniform(0.5, 1.0),
-    "entropy_coeff": tune.random.uniform(0, 0.01),
+    "vf_loss_coeff": tune.uniform(0.5, 1.0),
+    "entropy_coeff": tune.uniform(0, 0.01),
     "entropy_coeff_schedule": None,
 
     # Discount factor of the MDP.
     "gamma": 0.90,
 
     "callbacks": ConFormCallbacks,
+    "framework": "tfe",
 }
 
 stopping_criteria = {
-    "training_iteration": 100,
+    "training_iteration": 180,
     # "time_total_s" : 1800,
 }
 
@@ -138,25 +139,24 @@ scheduler = ASHAScheduler(
     metric="episode_reward_mean",
     mode="max",
     time_attr="training_iteration",
-    grace_period=5,
-    max_t=100, 
+    grace_period=50,
+    max_t=1000, 
 )
 
 result = tune.run(
     "APPO",
-    name="appo_vector_obs_param_search",
+    name="appo_vector_obs_param_search_2",
     scheduler=scheduler,
-    metric="episode_reward_mean",
-    mode="max",
     stop=stopping_criteria,
     reuse_actors=False,
-    checkpoint_freq=10,
+    checkpoint_freq=50,
     checkpoint_at_end=True,
     config=config,
     num_samples=20,
+    max_failures=3,
     # resume = True,
 )
-print("Best hyperparameters found were: ", result.best_config)
+print("Best hyperparameters found were: ", result.get_best_config())
 
 
 
