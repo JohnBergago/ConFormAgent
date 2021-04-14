@@ -4,6 +4,7 @@ import copy
 from typing import Dict, List
 from mlagents_envs.side_channel import SideChannel
 from ray.tune.utils import deep_update
+import conform_agent
 
 from conform_agent.env.unity.util import start_unity_env
 
@@ -19,18 +20,13 @@ class ConFormSimUnityEnvController:
         # DEFAULT_ENV_CONFIG
         self.config = dict()
         self.update_config(config)
-
-        # check for project dir environment variable
-        proj_dir = os.getenv("CONFORM_PROJ_DIR")
-        if proj_dir is None:
-            raise ("Couldn't find CONFORM_PROJ_DIR environment variable!" +
-                "Did you source the env.sh file?")
         
         # try to init the UnityEnvironment
         if not self.config.get('env_name') or self.config.get("env_name") == None:
             env_dir = None
         else:
-            env_dir = (proj_dir + "/opt/ConFormSim/build/" + self.config.get('env_name'))
+            env_dir = conform_agent.ROOT_DIR + "/unity_executables/" + self.config.get('env_name')
+            # env_dir = (proj_dir + "/opt/ConFormSim/build/" + self.config.get('env_name'))
         
         # check if there are any infos about no_graphic mode in the environment
         # configuration

@@ -9,10 +9,18 @@ def read(fname):
     with open(os.path.join(os.path.dirname(__file__), fname), encoding="utf-8") as f:
         return f.read()
 
+def package_files(directory):
+    paths = []
+    for (path, directories, filnames) in os.walk(directory):
+        for filename in filnames:
+            paths.append(os.path.join("..", path, filename))
+    return paths
+
+unity_executables = package_files('conform_agent/unity_executables')
 
 setup(
     name="conform_agent",
-    version="0.0.2",
+    version="0.0.3",
     author="Florian Schulze",
     author_email="flori.schulze@yahoo.de",
     description="A package to support concept formation research using reinforcement "
@@ -21,8 +29,12 @@ setup(
     license="MIT",
     long_description=read('../README.md'),
     long_description_content_type='text/markdown',
-    packages=["conform_agent"],
-    #package_data="",
+    packages=setuptools.find_packages(),
+    include_package_data=True,
+    package_data={
+        "": ["LICENSE", "README.md"],
+        "unity_executables": unity_executables,
+    },
     install_requires=[
         "tensorflow<2.3",
         "torch",
@@ -31,4 +43,10 @@ setup(
         "mlagents-envs==0.24.01"
     ],
     python_requires='>=3.6',
+
+    entry_points={
+        "console_scripts": [
+            "conform-rllib=conform_agent.scripts:cli",
+        ]
+    },
 )

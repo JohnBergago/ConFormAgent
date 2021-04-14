@@ -1,36 +1,41 @@
+import random
+import numpy as np
 from conform_agent.env.rllib.storage_env import RLLibConFormSimStorageEnv
 from conform_agent.models.tf.simple_rcnn import SimpleRCNNModel
-from conform_agent.conform_callbacks import ConFormCallbacks
 import ray
 from ray import tune
 from ray.tune.registry import register_env
-
-import random
-
+from conform_agent.conform_callbacks import ConFormCallbacks
 from ray.rllib.models import ModelCatalog
-from ray.tune.schedulers import PopulationBasedTraining
+from ray.tune.schedulers import ASHAScheduler
 
 import experiments.storage_env_configs as StorageEnvConfig
+
+random.seed(42)
+np.random.seed(42)
 
 # ray initialization and stuff
 # ray.init(local_mode=True, num_cpus=4, num_gpus=1)
 ray.init(address='auto')
+
 register_env("StorageEnv", RLLibConFormSimStorageEnv)
 ModelCatalog.register_custom_model("SimpleRCNNModel", SimpleRCNNModel)
 
 config={
     "env": "StorageEnv",
-    "env_config": StorageEnvConfig.easy_vector_obs,
+    "env_config": StorageEnvConfig.easy_visual_obs,
     
     "model":{
         "custom_model": "SimpleRCNNModel",
         "custom_model_config": {
             # Defines the convolutiontional layers. For each layer there has
             # to be [num_filters, kernel, stride]. 
-            "conv_layers": [],
+            "conv_layers": [
+                    [16, [8, 8], 4], 
+                    [16, [4, 4], 2]],
             # Defines the dense layers following the convolutional layers (if
             # any). For each layer the num_hidden units has to be defined. 
-            "dense_layers": [64]*4, 
+            "dense_layers": [64, 64],
             # whether to use a LSTM layer after the dense layers.
             "use_recurrent": False,
         },
@@ -55,8 +60,8 @@ config={
 
     # == PPO KL Loss options ==
     "use_kl_loss": True,
-    "kl_coeff": 0.6,
-    "kl_target": 0.006,
+    "kl_coeff": tune.uniform(0.3, 1),
+    "kl_target": tune.loguniform(3e-3, 3e-2),
 
     # System params.
     #
@@ -89,7 +94,7 @@ config={
     "replay_proportion": 0.0,
     # number of sample batches to store for replay. The number of transitions
     # saved total will be (replay_buffer_num_slots * rollout_fragment_length).
-    "replay_buffer_num_slots": 80,
+    "replay_buffer_num_slots": 0,
     # max queue size for train batches feeding into the learner
     "learner_queue_size": 16,
     # wait for train batches to be available in minibatch buffer queue
@@ -108,7 +113,7 @@ config={
     "grad_clip": 40.0,
     # either "adam" or "rmsprop"
     "opt_type": "adam",
-    "lr": 3e-3,
+    "lr":  tune.loguniform(1e-5, 5e-3),
     "lr_schedule": None,
     
     # rmsprop considered
@@ -116,8 +121,8 @@ config={
     "momentum": 0.0,
     "epsilon": 0.1,
     # balancing the three losses
-    "vf_loss_coeff": 0.57,
-    "entropy_coeff": 3e-3,
+    "vf_loss_coeff": tune.uniform(0.5, 1.0),
+    "entropy_coeff": tune.uniform(0, 0.01),
     "entropy_coeff_schedule": None,
 
     # Discount factor of the MDP.
@@ -126,32 +131,30 @@ config={
     "callbacks": ConFormCallbacks,
 }
 
-scheduler = PopulationBasedTraining(
+stopping_criteria = {
+    # "training_iteration": 180,
+    # # "time_total_s" : 1800,
+}
+
+scheduler = ASHAScheduler(
+    metric="episode_reward_mean",
+    mode="max",
     time_attr="training_iteration",
-    perturbation_interval=50,
-    hyperparam_mutations={
-        "lr": lambda: random.uniform(1e-5, 2e-3),
-        "entropy_coeff": lambda: random.uniform(0, 1e-2),
-    }
+    grace_period=20,
+    max_t=180, 
 )
 
 result = tune.run(
     "APPO",
-    name="appo_vector_obs_pbt",
+    name="appo_visual_obs_param_search_1",
     scheduler=scheduler,
-    metric="episode_reward_mean",
-    mode="max",
+    stop=stopping_criteria,
     reuse_actors=False,
-    checkpoint_freq=50,
+    checkpoint_freq=100,
     checkpoint_at_end=True,
     config=config,
-    num_samples=4,
-    keep_checkpoints_num=4,
-    # resume = True,
+    num_samples=20,
+    max_failures=3,
+    resume = True,
 )
-print("Best hyperparameters found were: ", result.get_best_config())
-
-
-
-
-
+print("Best hyperparameters found were: ", result.get_best_config(metric="episode_reward_mean", mode="max"))

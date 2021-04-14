@@ -33,7 +33,7 @@ config={
             "conv_layers": [],
             # Defines the dense layers following the convolutional layers (if
             # any). For each layer the num_hidden units has to be defined. 
-            "dense_layers": [64]*4, 
+            "dense_layers": tune.grid_search([[128]*4,[64]*5, [48]*6]), 
             # whether to use a LSTM layer after the dense layers.
             "use_recurrent": False,
         },
@@ -111,7 +111,7 @@ config={
     "grad_clip": 40.0,
     # either "adam" or "rmsprop"
     "opt_type": "adam",
-    "lr":  tune.loguniform(1e-5, 1e-2),
+    "lr":  tune.loguniform(1e-5, 5e-3),
     "lr_schedule": None,
     
     # rmsprop considered
@@ -130,8 +130,8 @@ config={
 }
 
 stopping_criteria = {
-    "training_iteration": 180,
-    # "time_total_s" : 1800,
+    # "training_iteration": 180,
+    # # "time_total_s" : 1800,
 }
 
 scheduler = ASHAScheduler(
@@ -139,24 +139,20 @@ scheduler = ASHAScheduler(
     mode="max",
     time_attr="training_iteration",
     grace_period=50,
-    max_t=1000, 
+    max_t=200, 
 )
 
 result = tune.run(
     "APPO",
-    name="appo_vector_obs_param_search_2",
+    name="appo_vector_obs_param_search_4",
     scheduler=scheduler,
     stop=stopping_criteria,
     reuse_actors=False,
-    checkpoint_freq=50,
+    checkpoint_freq=100,
     checkpoint_at_end=True,
     config=config,
     num_samples=20,
     max_failures=3,
     # resume = True,
 )
-print("Best hyperparameters found were: ", result.get_best_config())
-
-
-
-
+print("Best hyperparameters found were: ", result.get_best_config(metric="episode_reward_mean", mode="max"))

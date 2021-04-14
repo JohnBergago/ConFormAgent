@@ -1,0 +1,4 @@
+recursive-include conform_agent/unity_executables *
+
+# Misc
+include LICENSE

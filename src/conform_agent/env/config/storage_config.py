@@ -32,7 +32,7 @@ DEFAULT_ENV_CONFIG = {
     # General Settings (Unity Env)
     #################################################################################
     # The UnityEnvironment path or file to be wrapped in the gym.
-    "env_name": None,
+    "env_name": "StorageEnvironmentGrid",
     # Whether to use visual observations or vector observation of the full env.
     "use_visual" : False,
     # Maximum number of steps until a single agent in the environment will be reset.
