@@ -73,7 +73,7 @@ config={
     "rollout_fragment_length": 64,
     "train_batch_size": 2048,
     "min_iter_time_s": 10,
-    "num_workers": 4,
+    "num_workers": 3,
     # number of GPUs the learner should use.
     "num_gpus": 0.5,
     # set >1 to load data into GPUs in parallel. Increases GPU memory usage
