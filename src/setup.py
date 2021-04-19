@@ -36,7 +36,7 @@ setup(
         "unity_executables": unity_executables,
     },
     install_requires=[
-        "tensorflow<2.3",
+        "tensorflow>=2.0",
         "torch",
         "ray[all]>=1.2.*",
         "mlagents==0.24.1",
