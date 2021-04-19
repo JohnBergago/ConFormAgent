@@ -13,7 +13,7 @@ from ray.tune.schedulers import PopulationBasedTraining
 import experiments.storage_env_configs as StorageEnvConfig
 
 # ray initialization and stuff
-ray.init(local_mode=True, num_cpus=4, num_gpus=1)
+ray.init(num_cpus=4, num_gpus=1)
 # ray.init(address='auto')
 register_env("StorageEnv", RLLibConFormSimStorageEnv)
 ModelCatalog.register_custom_model("SimpleRCNNModel", SimpleRCNNModel)
