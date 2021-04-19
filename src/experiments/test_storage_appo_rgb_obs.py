@@ -15,8 +15,8 @@ random.seed(42)
 np.random.seed(42)
 
 # ray initialization and stuff
-# ray.init(local_mode=True, num_cpus=4, num_gpus=1)
-ray.init(address='auto')
+ray.init(num_cpus=4, num_gpus=1)
+# ray.init(address='auto')
 
 register_env("StorageEnv", RLLibConFormSimStorageEnv)
 ModelCatalog.register_custom_model("SimpleRCNNModel", SimpleRCNNModel)
@@ -78,9 +78,9 @@ config={
     "rollout_fragment_length": 64,
     "train_batch_size": 2048,
     "min_iter_time_s": 10,
-    "num_workers": 5,
+    "num_workers": 3,
     # number of GPUs the learner should use.
-    "num_gpus": 0.5,
+    "num_gpus": 1,
     # set >1 to load data into GPUs in parallel. Increases GPU memory usage
     # proportionally with the number of buffers.
     "num_data_loader_buffers": 1,
